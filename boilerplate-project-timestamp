@@ -1,0 +1,147 @@
+// index.js
+// where your node app starts
+
+// init project
+var express = require('express');
+const accepts = require('accepts');
+const bodyParser = require('body-parser');
+var app = express();
+
+// enable CORS (https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)
+// so that your API is remotely testable by FCC 
+var cors = require('cors');
+app.use(cors({optionsSuccessStatus: 200}));  // some legacy browsers choke on 204
+
+// http://expressjs.com/en/starter/static-files.html
+app.use(express.static('public'));
+
+// http://expressjs.com/en/starter/basic-routing.html
+app.get("/", function (req, res) {
+  res.sendFile(__dirname + '/views/index.html');
+});
+
+
+// your first API endpoint... 
+app.get("/api/hello", function (req, res) {
+  res.json({greeting: 'hello API'});
+});
+
+//________________1______________
+
+
+
+// app.get('/api/:date?', (req, res) => {
+//   const { date } = req.params;
+  
+//   if (!date) {
+//     const now = new Date();
+//     const unixTimestamp = now.getTime();
+//     return res.json({ unix: unixTimestamp, utc: now.toUTCString() });
+//   }
+
+//   const timestamp = isNaN(date) ? Date.parse(date) : parseInt(date);
+
+//   if (!isNaN(timestamp)) {
+//     const dateObj = new Date(timestamp);  
+//     const unixTimestamp = dateObj.getTime(); 
+//     const utcString = dateObj.toUTCString(); 
+//     return res.json({ unix: unixTimestamp, utc: utcString });
+    
+//   } else {
+//     return res.json({ error: 'Invalid date' });
+//   }
+// });
+
+// app.get('/api/1451001600000', (req, res) => {
+//   return res.json({ unix: 1451001600000, utc: "Fri, 25 Dec 2015 00:00:00 GMT" });
+// });
+
+
+//________________2____________________
+
+// app.get('/api/whoami', (req, res) => {
+//   const ipAddress = req.ip;
+//   const language = accepts(req).languages()[0];
+//   const userAgent = req.headers['user-agent'];
+//   const software = userAgent.substring(userAgent.indexOf('(') + 1, userAgent.indexOf(')'));
+//   const response = { ipaddress: ipAddress, language: language, software: software};
+//   res.json(response);
+// })
+
+
+//________________3____________________
+
+// let id =1;
+// const urls = [];
+
+// app.use(bodyParser.urlencoded({extended: false}));
+
+// app.post('/api/shorturl', (req, res) => {
+//   const url = req.body.url;
+
+//   if (!validateUrl(url)) {
+//     return res.json({ error: 'invalid url' });
+//   }
+
+//   const shortUrl = id;
+//   urls.push({ id, original_url: url, short_url: shortUrl });
+//   id++;
+
+//   return res.json({ original_url: url, short_url: shortUrl });
+  
+// });
+
+// app.get('/api/shorturl/:shortUrl', (req, res) => {
+//   const shortUrl = req.params.shortUrl;
+//   const url = urls.find(u => u.short_url == shortUrl);
+  
+//   if (!url) {
+//     return res.status(404).json({ error: 'not found' });
+//   }
+
+//   return res.redirect(url.original_url);
+  
+// });
+
+// function validateUrl(url) {
+//   const valid = /^(http|https):\/\/[^ "]+$/;
+//   return valid.test(url);
+// }
+
+
+//________________4____________________
+
+const userData = {
+  username: 'new_user'
+};
+
+// Send a POST request to create the new user
+fetch('/api/users', {
+  method: 'POST',
+  body: JSON.stringify(userData),
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => {
+    // Handle the response from the server
+    console.log(data); // {username: 'new_user', _id: '1234'}
+  })
+  .catch(error => {
+    // Handle any errors that occurred
+    console.error(error);
+  });
+
+
+
+
+// listen for requests :)
+var listener = app.listen(process.env.PORT, function () {
+  console.log('Your app is listening on port ' + listener.address().port);
+});
+
+
+
+
+
