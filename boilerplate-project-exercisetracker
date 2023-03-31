@@ -1,0 +1,238 @@
+const express = require('express')
+const mySecret = process.env['MONGO_URI']
+const app = express()
+const cors = require('cors')
+require('dotenv').config()
+const mongoose = require('mongoose')
+const {Schema} = mongoose;
+
+//Schemas
+const userSchema = new Schema({
+  'username' : String,
+})
+
+const exerciseSchema = new Schema({
+  "username" : String,
+  "date" : Date,
+  "duration" : Number,
+  "description" : String
+})
+
+const logSchema = new Schema ({
+  "username" : String,
+  "count" : Number,
+  "log" : Array
+})
+
+//Models
+const UserInfo = mongoose.model('userInfo', userSchema);
+const ExerciseInfo = mongoose.model('exerciseInfo', exerciseSchema);
+const LogInfo = mongoose.model('logInfo', logSchema);
+
+// Config
+mongoose.connect(mySecret, {
+  useNewUrlParser : true,
+  useUnifiedTopology : true
+})
+.then(() => {
+  console.log('Connected to MONGO BONGO DB');
+})
+.catch((err) => {
+  console.error('Failed to connect to MongoDB:', err);
+});
+
+
+
+//Middlware
+app.use(express.urlencoded({extended: false }))
+app.use(express.json())
+app.use(cors())
+app.use(express.static('public'))
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/views/index.html')
+});
+
+// Api Endpoints
+
+  // #1
+app.post('/api/users', (req, res) => {
+  UserInfo.find({username: req.body.username})
+  .exec()
+  .then(userData => {
+    if (userData.length === 0) {
+      const test = new UserInfo({
+        _id: req.body.id,
+        username: req.body.username,
+      });
+
+      test.save()
+  .then((savedData) => {
+    res.json({
+      _id: savedData.id,
+      username: savedData.username,
+    });
+  })
+  .catch((error) => {
+    console.log("Error saving data=>", error);
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  });
+    } else {
+      res.send("username already exists");
+    }
+  })
+  .catch(err => {
+    console.log("Error with server=>", err);
+  });
+
+})
+
+// #2
+app.post("/api/users/:_id/exercises", (req, res) => {
+  let idJson = {"id" : req.params._id};
+  let checkedDate = new Date(req.body.date);
+  let idToCheck = idJson.id;
+
+  let noDateHandler = () => {
+    if (checkedDate instanceof Date && !isNaN(checkedDate)) {
+      return checkedDate
+    } else {
+      checkedDate = new Date();
+    }
+  }
+
+  UserInfo.findById(idToCheck)
+  .then((data) => {
+    noDateHandler(checkedDate);
+
+    const test = new ExerciseInfo({
+      username: data.username,
+      description: req.body.description,
+      duration: req.body.duration,
+      date: checkedDate.toDateString(),
+    });
+
+    test.save()
+      .then((savedData) => {
+        console.log("saved exercise successfully");
+        res.json({
+          _id: idToCheck,
+          username: savedData.username,
+          description: savedData.description,
+          duration: savedData.duration,
+          date: savedData.date.toDateString(),
+        });
+      })
+      .catch((error) => {
+        console.log("error saving=> ", error);
+        res.status(500).json({
+          error: "Internal server error",
+        });
+      });
+  })
+  .catch((error) => {
+    console.log("error with id", error);
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  });
+  });
+
+
+
+// #3
+
+app.get("/api/users/:_id/logs", (req, res) => {
+  const {from, to, limit} = req.query;
+  let idJson = { "id" : req.params._id }
+  let idToCheck = idJson.id;
+
+  // check id
+  UserInfo.findById(idToCheck)
+  .then(data => {
+    var query = {
+      username: data.username
+    };
+
+    if (from !== undefined && to === undefined) {
+      query.date = { $gte: new Date(from)};
+    } else if (to !== undefined && from === undefined ) {
+      query.date = {$lte: new Date(to) };
+    } else if (from !== undefined && to !== undefined) {
+      query.date = {$gte: new Date(from), $lte: new Date(to)};
+    }
+
+    let limitChecker = (limit) => {
+      let maxlimit = 100;
+      if (limit) {
+        return limit;
+      } else {
+        return maxlimit;
+      }
+    };
+
+    
+      
+      ExerciseInfo.find(query)
+      .limit(limitChecker(+limit))
+      .exec()
+      .then(docs => {
+        let loggedArray = docs.map(item => ({
+          description: item.description,
+          duration: item.duration,
+          date: item.date.toDateString(),
+        }));
+
+        // console.log(`my array ${JSON.stringify(loggedArray)}`);
+
+        const test = new LogInfo({
+          username: data.username,
+          count: loggedArray.length,
+          log: loggedArray,
+        });
+
+        test.save()
+          .then((savedData) => {
+            console.log("saved exercise successfully");
+            res.json({
+              _id: idToCheck,
+              username: savedData.username,
+              count: savedData.count,
+              log: loggedArray,
+            });
+          })
+          .catch((error) => {
+            console.log("error saving exercise", error);
+            res.status(500).json({
+              error: "Internal server error",
+            });
+          });
+      })
+      .catch(err => {
+        console.log("error with query=>", err);
+      });
+    
+  })
+
+  .catch (err => {
+      console.log("error with id=>", err);
+  })
+
+})
+
+// #4
+app.get("/api/users", (req, res) => {
+  UserInfo.find({})
+  .then(data => {
+    res.json(data);
+  })
+  .catch(err => {
+    res.send("no users");
+  });
+})
+
+
+const listener = app.listen(process.env.PORT || 3000, () => {
+  console.log('Your app is listening on port ' + listener.address().port)
+})
